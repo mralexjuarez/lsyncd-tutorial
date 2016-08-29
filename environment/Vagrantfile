@@ -1,0 +1,59 @@
+# Vagrantfile for lsyncd session
+# This file configures three machines with the hostnames of server1 and server2 and lb
+# The default image is CentOS 6
+# server1 - 192.168.33.10
+# server2 - 192.168.33.20
+# lb - 192.168.33.100
+# Bring up the enviornmeant with vagrant up
+# Quick Start Vagrant tutorial 
+
+Vagrant.configure(2) do |config|
+
+##### Web Server 1 of 2 
+  config.vm.define "server1" do |machine|
+    machine.vm.box = "centos/6"
+    machine.vm.hostname = "server1"
+    machine.vm.network "private_network", ip: "192.168.33.10"
+    machine.vm.provision "shell", inline: <<-SHELL
+        sudo yum update
+        sudo yum install -y epel-release
+        sudo yum install -y httpd php php-mysql lsyncd
+    SHELL
+    machine.vm.provider "virtualbox" do |vb|
+      vb.gui = false
+      vb.memory = "1024"
+    end
+  end
+
+##### Web Server 2 of 2 
+  config.vm.define "server2" do |machine|
+    machine.vm.box = "centos/6"
+    machine.vm.hostname = "server2"
+    machine.vm.network "private_network", ip: "192.168.33.20"
+    machine.vm.provider "virtualbox" do |vb|
+      vb.gui = false
+      vb.memory = "1024"
+    end
+   machine.vm.provision "shell", inline: <<-SHELL
+      sudo yum update
+      sudo yum install -y epel-release
+      sudo yum install -y httpd php ph-mysql lsyncd 
+   SHELL
+  end
+
+##### This third server is the load-balancer and the MySQL server.
+  config.vm.define "lb" do |machine|
+    machine.vm.box = "centos/6"
+    machine.vm.hostname = "lb"
+    machine.vm.network "private_network", ip: "192.168.33.100"
+    machine.vm.provider "virtualbox" do |vb|
+      vb.gui = false
+      vb.memory = "1024"
+    end
+   machine.vm.provision "shell", inline: <<-SHELL
+      sudo yum update
+      sudo yum install -y epel-release
+      sudo yum install -y httpd php lsyncd mariadb-server
+   SHELL
+  end
+end

@@ -5,11 +5,11 @@
 # web2 - 192.168.33.20
 # lb - 192.168.33.100
 # Bring up the enviornmeant with vagrant up
-# Quick Start Vagrant tutorial
+# Quick Start Vagrant tutorial 
 
 Vagrant.configure(2) do |config|
 
-##### Web Server 1 of 2
+##### Web Server 1 of 2 
   config.vm.define "web1" do |machine|
     machine.vm.box = "centos/6"
     machine.vm.hostname = "web1"
@@ -31,7 +31,7 @@ Vagrant.configure(2) do |config|
     end
   end
 
-##### Web Server 2 of 2
+##### Web Server 2 of 2 
   config.vm.define "web2" do |machine|
     machine.vm.box = "centos/6"
     machine.vm.hostname = "web2"
@@ -46,7 +46,7 @@ Vagrant.configure(2) do |config|
       useradd webuser
       sudo yum update
       sudo yum install -y epel-release
-      sudo yum install -y httpd php php-mysql lsyncd
+      sudo yum install -y httpd php php-mysql lsyncd 
       chkconfig httpd on
       chkconfig lsyncd on
       service httpd start
@@ -69,12 +69,15 @@ Vagrant.configure(2) do |config|
       sudo yum update
       sudo yum install -y epel-release
       sudo yum install -y httpd php lsyncd mysql mysql-server haproxy
+      cp /vagrant/lb/haproxy.conf /etc/rsyslog.d/haproxy.conf
       chkconfig haproxy on
       cp /vagrant/lb/haproxy.cfg /etc/haproxy/haproxy.cfg
-      cp /vagrant/lb/haproxy.conf /etc/rsyslog.d/haproxy.conf
+      service rsyslog restart
       service haproxy start
       chkconfig mysqld on
-      service mysqld on
+      service mysqld start
+      mysqladmin create wordpress
+      mysql mysql -e "grant all privileges on wordpress.* to 'wpuser'@'192.168.33.%' identified by 'wppassword';"
    SHELL
   end
 end

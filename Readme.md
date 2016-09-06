@@ -4,16 +4,12 @@
 
 - Readme.md - This file. Duh.
 - environment - Vagrant environment for servers
-- slides - The lsync presentation.
-- assets - This directory contains any notes and/or additional resources
-
-###  
 
 # Lsyncd Technical Session
 
 ## So what is lsyncd?
 
-Lsyncd is a tool used to keep a source directory in sync with other local or remote directories.  It is a solution suited keeping directories in sync by batch processing changes over to the synced directories.
+Lsyncd is a tool used to keep a source directory in sync with other local or remote directories.  It is a solution suited keeping directories in sync by batch processing changes over to the synced directories.¬
 
 ## When would we use lsyncd?
 
@@ -59,7 +55,10 @@ sync {
         targetdir = "/var/www/html",
         host = "192.168.33.20",
         delay           = 5,
-        rsync = { rsh="/usr/bin/ssh -l webuser -i /home/webuser/.ssh/id_rsa -o StrictHostKeyChecking=no"}
+        rsync = { rsh="/usr/bin/ssh -l webuser -i /home/webuser/.ssh/id_rsa -o StrictHostKeyChecking=no"},
+        ssh = {
+       		_extra = {'-l','webuser','-i','/home/webuser/.ssh/id_rsa','-o','StrictHostKeyChecking=no'}
+       	}
 }
 ```
 
@@ -84,16 +83,16 @@ maxDelays = 10
 **Example:** Delay here sets how long between syncing the queued events.
 ```
 sync {
-    default.rsyncssh,
-    ...,
-    Delay = 5,
-    ...
+	default.rsyncssh,
+	...,
+	Delay = 5,
+	...
 }
 ```
 
 ## Setup and Installation
 
-As of this writing (8/29/2016) the most recent version  available in the EPEL channel is lsyncd-2.1.5. This section will cover installation and setup on a pair of CentOS 6 servers.
+As of this writing (8/29/2016) the most recent version 	available in the EPEL channel is lsyncd-2.1.5. This section will cover installation and setup on a pair of CentOS 6 servers.
 
 #### Prerequisites
 
@@ -165,7 +164,10 @@ sync {
         host = "192.168.33.20",
         targetdir = "/var/www/html",
         delay           = 5,
-        rsync = { rsh="/usr/bin/ssh -l webuser -i /home/webuser/.ssh/id_rsa -o StrictHostKeyChecking=no"}
+        rsync = { rsh="/usr/bin/ssh -l webuser -i /home/webuser/.ssh/id_rsa -o StrictHostKeyChecking=no"},
+        ssh = {
+       		_extra = {'-l','webuser','-i','/home/webuser/.ssh/id_rsa','-o','StrictHostKeyChecking=no'}
+       	}
 }
 ```
 
@@ -183,6 +185,7 @@ With the sync section there is a bit more to elaborate on.
 > **targetdir = "/var/www/html"** - The destination path we want to sync to
 >  **delay = 5**  - Changing the default batch time from 15 to 5 seconds.
 >  **rsync = {rsh="/usr/bin/ssh -l webuser -i /home/webuser/.ssh/id_rsa -o StrictHostKeyChecking=no"}** - This section provides a way to pass along additional rsync options. In our example we are connecting as the webuser user.
+>  **ssh = {_extra = {'-l','webuser','-i','/home/webuser/.ssh/id_rsa','-o','StrictHostKeyChecking=no'}}**  - This section is needed because lsyncd executes moves and deletes by issuing a ssh command instead of a rsync command.
 
 #### One extra Note
 
@@ -225,9 +228,9 @@ Inotify watching 136 directories
   6: /var/www/html/wordpress/wp-content/plugins/akismet/_inc/
 ```
 
-## One More Thing
+## Possible Issues with File Syncing
 
-#### WARNING - Restarting lsyncd can delete files you may not be expecting it to. - WARNING
+#### WARNING - Restarting lsyncd can delete files on remote servers and you may not be expecting it to. - WARNING
 
 From lsyncd documentation.
 
@@ -237,14 +240,35 @@ The default the *delete* directive is true. Which is Lsyncd will delete on the t
 
 Other Valid Options
 
-> **delete      =       false**         Lsyncd will not delete any files on the target. Not on startup nor on normal operation. (Overwrites are possible though)
+> **delete 	= 	false** 	Lsyncd will not delete any files on the target. Not on startup nor on normal operation. (Overwrites are possible though)
 
-> **delete      =       'startup'**     Lsyncd will delete files on the target when it starts up but not on normal operation.
+> **delete 	= 	'startup'** 	Lsyncd will delete files on the target when it starts up but not on normal operation.
 
-> **delete      =       'running'** Lsyncd will not delete files on the target when it starts up but will delete those that are removed during normal operation
+> **delete 	= 	'running'** Lsyncd will not delete files on the target when it starts up but will delete those that are removed during normal operation
 
 So by default lsyncd will delete any files on the targets not currently on the source. This keeps with the idea of keeping one path in sync with a source path.
 
 If you find yourself in a place where data is being written to one of the target directories outside of the lsyncd process, restarting lsyncd on the master **WILL DELETE THOSE FILES.**.
 
 If you find yourself in this situation, before restarting lsyncd you will want to try and sync all of the targets back to the source and then restart.
+
+#### SSH Keys Permission Issues
+
+If you follow the configuration file step by step you will see the following SSH line as part of the configuration. This line passes extra parameters allowing us to move and delete files as webuser. 
+
+    ssh = {_extra = {‘-l’,’webuser’,’-i’,’/home/webuser/.ssh/id_rsa’,’-o’,’StrictHostKeyChecking=no’}} 
+
+Without this configuration in place there will be an error similar to what you see below.
+
+```
+Permission denied (publickey,gssapi-keyex,gssapi-with-mic).
+Tue Sep  6 19:29:03 2016 Normal: Retrying (list): 255
+Tue Sep  6 19:29:08 2016 Normal: Deleting list
+```
+
+Having both the rsync and the ssh configuration allows all operations to be executed as webuser.
+
+
+
+
+

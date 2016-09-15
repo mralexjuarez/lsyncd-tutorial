@@ -5,7 +5,10 @@
 - Readme.md - This file. Duh.
 - environment - Vagrant environment for servers
 
-# Lsyncd Technical Session
+# Lsyncd Tutorial
+
+@(Technical Sessions)[tutorial, lsyncd]
+
 
 ## So what is lsyncd?
 
@@ -13,13 +16,25 @@ Lsyncd is a tool used to keep a source directory in sync with other local or rem
 
 ## When would we use lsyncd?
 
-So the generic use case is to keep a source directory in sync with one or more local and remote directories.
+Almost every tool and technology out there is created to solve a problem. In this case here, the problem is we need to have multiple servers with the same content available to each.
 
-This could mean:
+So our generic use case is to keep a source directory in sync with one or more local and remote directories.
 
--  Creating a live backup of a directory which would be easy to fail over to.
--  Eliminate a single point of failure by distributing the data to multiple servers
--  Scale out a web application (e.g. Wordpress) 
+Some uses could be:
+
+-  Syncing files to a disaster recovery site or for backups.
+-  Eliminate a single point of failure by distributing the data to multiple servers.
+-  Scale out a web application so multiple nodes can servce the same content.
+
+#### Some Alternatives
+
+While lsyncd is a a solution to our use case, there are always other solutions out there. What we use should depend on what our enviornment demands are.
+
+Some other solutions might be
+
+* [NFS][1] - A thought here is as you add more servers, this adds more stress to the single NFS server.
+* [Ceph][2] / [GlusterFS][3] - Perhaps good for larger use cases, but adds compliaton.
+* [DRBD][4] - Works a the block layer instead of file storage.
 
 ## How does lsyncd work?
 
@@ -39,14 +54,15 @@ In the settings section we define some of the global options for our daemon.
 settings {
         logfile         = "/var/log/lsyncd/lsyncd.log",
         statusFile      = "/var/log/lsyncd/lsyncd.stat",
-        statusIntervall = 1,
+        statusInterval = 1,
         nodaemon        = false
 }
 ```
 
-> **Caution**: You may see the settings directive started off as "_settings = {...}_". In previous versions the configuration file *settings* was defined as a variable. It is now a function and thus no longer needs an "=" between settings and {
+> **Caution**: You may see the settings directive started off as "_settings = {...}_". In previous versions the configuration file *settings* was defined as a variable. It is now a function and thus no longer needs an "=" between settings and the curly brackets.
 
-Here is an example of a sync section.
+Here is an example of a sync section. In the setup below we are configuring lsyncd to do all transfers as a non-privielged user called webuser.
+
 
 ```
 sync {
@@ -57,8 +73,8 @@ sync {
         delay           = 5,
         rsync = { rsh="/usr/bin/ssh -l webuser -i /home/webuser/.ssh/id_rsa -o StrictHostKeyChecking=no"},
         ssh = {
-       		_extra = {'-l','webuser','-i','/home/webuser/.ssh/id_rsa','-o','StrictHostKeyChecking=no'}
-       	}
+            _extra = {'-l','webuser','-i','/home/webuser/.ssh/id_rsa','-o','StrictHostKeyChecking=no'}
+        }
 }
 ```
 
@@ -75,7 +91,7 @@ Lsyncd monitors files and directories for changes. These changes are observed, a
 ```
 settings {
 ...
-maxDelays = 10
+maxDelays = 10,
 ...
 }
 ```
@@ -83,16 +99,16 @@ maxDelays = 10
 **Example:** Delay here sets how long between syncing the queued events.
 ```
 sync {
-	default.rsyncssh,
-	...,
-	Delay = 5,
-	...
+    default.rsyncssh,
+    ...,
+    Delay = 5,
+    ...
 }
 ```
 
 ## Setup and Installation
 
-As of this writing (8/29/2016) the most recent version 	available in the EPEL channel is lsyncd-2.1.5. This section will cover installation and setup on a pair of CentOS 6 servers.
+Setting up and installing lsyncd only requires a small number of steps.
 
 #### Prerequisites
 
@@ -166,8 +182,8 @@ sync {
         delay           = 5,
         rsync = { rsh="/usr/bin/ssh -l webuser -i /home/webuser/.ssh/id_rsa -o StrictHostKeyChecking=no"},
         ssh = {
-       		_extra = {'-l','webuser','-i','/home/webuser/.ssh/id_rsa','-o','StrictHostKeyChecking=no'}
-       	}
+            _extra = {'-l','webuser','-i','/home/webuser/.ssh/id_rsa','-o','StrictHostKeyChecking=no'}
+        }
 }
 ```
 
@@ -208,7 +224,7 @@ Tue Aug 30 04:57:54 2016 Normal: recursive startup rsync: /var/www/html/ -> 192.
 Tue Aug 30 04:57:55 2016 Normal: Startup of "/var/www/html/" finished: 0
 ```
 
-/var/log/lsyncd/lsyncd.start
+/var/log/lsyncd/lsyncd.stat
 
 ```
 Lsyncd status report at Tue Aug 30 04:58:05 2016
@@ -240,11 +256,11 @@ The default the *delete* directive is true. Which is Lsyncd will delete on the t
 
 Other Valid Options
 
-> **delete 	= 	false** 	Lsyncd will not delete any files on the target. Not on startup nor on normal operation. (Overwrites are possible though)
+> **delete      =       false**         Lsyncd will not delete any files on the target. Not on startup nor on normal operation. (Overwrites are possible though)
 
-> **delete 	= 	'startup'** 	Lsyncd will delete files on the target when it starts up but not on normal operation.
+> **delete      =       'startup'**     Lsyncd will delete files on the target when it starts up but not on normal operation.
 
-> **delete 	= 	'running'** Lsyncd will not delete files on the target when it starts up but will delete those that are removed during normal operation
+> **delete      =       'running'** Lsyncd will not delete files on the target when it starts up but will delete those that are removed during normal operation
 
 So by default lsyncd will delete any files on the targets not currently on the source. This keeps with the idea of keeping one path in sync with a source path.
 
@@ -267,3 +283,9 @@ Tue Sep  6 19:29:08 2016 Normal: Deleting list
 ```
 
 Having both the rsync and the ssh configuration allows all operations to be executed as webuser.
+
+
+  [1]: https://en.wikipedia.org/wiki/Network_File_System
+  [2]: http://ceph.com/
+  [3]: https://www.gluster.org/
+  [4]: https://www.drbd.org

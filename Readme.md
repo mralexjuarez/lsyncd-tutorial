@@ -267,8 +267,3 @@ Tue Sep  6 19:29:08 2016 Normal: Deleting list
 ```
 
 Having both the rsync and the ssh configuration allows all operations to be executed as webuser.
-
-
-
-
-

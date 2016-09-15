@@ -1,0 +1,83 @@
+# Vagrantfile for lsyncd session
+# This file configures three machines with the hostnames of web1 and web2 and lb
+# The default image is CentOS 6
+# web1 - 192.168.33.10
+# web2 - 192.168.33.20
+# lb - 192.168.33.100
+# Bring up the enviornmeant with vagrant up
+# Quick Start Vagrant tutorial 
+
+Vagrant.configure(2) do |config|
+
+##### Web Server 1 of 2 
+  config.vm.define "web1" do |machine|
+    machine.vm.box = "centos/6"
+    machine.vm.hostname = "web1"
+    machine.vm.network "private_network", ip: "192.168.33.10"
+    machine.vm.provision "shell", inline: <<-SHELL
+        setenforce 0
+        sed -i.bak -e 's/SELINUX=enforcing/SELINUX=permissive/' /etc/sysconfig/selinux
+        useradd webuser
+        sudo yum update
+        sudo yum install -y epel-release
+        sudo yum install -y httpd php php-mysql lsyncd
+        chkconfig httpd on
+        chkconfig lsyncd on
+        service httpd start
+    SHELL
+    machine.vm.provider "virtualbox" do |vb|
+      vb.gui = false
+      vb.memory = "1024"
+    end
+  end
+
+##### Web Server 2 of 2 
+  config.vm.define "web2" do |machine|
+    machine.vm.box = "centos/6"
+    machine.vm.hostname = "web2"
+    machine.vm.network "private_network", ip: "192.168.33.20"
+    machine.vm.provider "virtualbox" do |vb|
+      vb.gui = false
+      vb.memory = "1024"
+    end
+   machine.vm.provision "shell", inline: <<-SHELL
+      setenforce 0
+      sed -i.bak -e 's/SELINUX=enforcing/SELINUX=permissive/' /etc/sysconfig/selinux
+      useradd webuser
+      sudo yum update
+      sudo yum install -y epel-release
+      sudo yum install -y httpd php php-mysql lsyncd 
+      chkconfig httpd on
+      chkconfig lsyncd on
+      service httpd start
+   SHELL
+  end
+
+##### This third server is the load-balancer and the MySQL server.
+  config.vm.define "lb" do |machine|
+    machine.vm.box = "centos/6"
+    machine.vm.hostname = "lb"
+    machine.vm.network "private_network", ip: "192.168.33.100"
+    machine.vm.provider "virtualbox" do |vb|
+      vb.gui = false
+      vb.memory = "1024"
+    end
+   machine.vm.provision "shell", inline: <<-SHELL
+      setenforce 0
+      sed -i.bak -e 's/SELINUX=enforcing/SELINUX=permissive/' /etc/sysconfig/selinux
+      useradd webuser
+      sudo yum update
+      sudo yum install -y epel-release
+      sudo yum install -y httpd php lsyncd mysql mysql-server haproxy
+      cp /vagrant/lb/haproxy.conf /etc/rsyslog.d/haproxy.conf
+      chkconfig haproxy on
+      cp /vagrant/lb/haproxy.cfg /etc/haproxy/haproxy.cfg
+      service rsyslog restart
+      service haproxy start
+      chkconfig mysqld on
+      service mysqld start
+      mysqladmin create wordpress
+      mysql mysql -e "grant all privileges on wordpress.* to 'wpuser'@'192.168.33.%' identified by 'wppassword';"
+   SHELL
+  end
+end
